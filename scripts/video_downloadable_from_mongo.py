@@ -6,10 +6,17 @@ On default mongo, it collects all videos. On split mongo, collects videos on pub
 """
 from bson.objectid import ObjectId
 from pymongo import MongoClient
+from pymongo.read_preferences import ReadPreference
 
-# video_download_allowed = False  # Change this var to look for video downloads set to true or false
+
 client = MongoClient()
 db = client['edxapp']
+
+# This is how you connect to a replica with username/password:
+# uri = 'mongodb://user_name:my%20url%20encoded%20password@example.com:27017/stuff'
+# client = MongoClient(uri)
+# db = client['db-instance']
+
 filename_split_mongo = "split_mongo.tsv"
 filename_default_mongo = "draft_mongo.tsv"
 
@@ -26,8 +33,8 @@ def get_set_metadata_field(field, mongo_doc):
     """
     Will return "None" if the given metadata field is not set. Otherwise, return the field's value.
     """
-    if field in mongo_doc[u'metadata']:
-        return mongo_doc[u'metadata'][field]
+    if field in mongo_doc:
+        return mongo_doc[field]
     else:
         return "None"
 
@@ -56,8 +63,8 @@ def get_draft_mongo_data(video_download_allowed=False, html5_sources_missing_onl
                 {"metadata.download_video" : video_download_allowed, "_id.revision": None},
                 {"_id.course": 1, "metadata.display_name": 1, "metadata.html5_sources": 1}
         ):
-            display_name = get_set_metadata_field(u'display_name', i)
-            html5_sources = get_set_metadata_field(u'html5_sources', i)
+            display_name = get_set_metadata_field(u'display_name', i[u'metadata'])
+            html5_sources = get_set_metadata_field(u'html5_sources', i[u'metadata'])
             if html5_sources_missing_only and html5_sources:
                 # If we only want to know about videos with missing html5 sources, then don't write anything if
                 # there are html5 sources
@@ -102,23 +109,34 @@ def get_split_mongo_data(video_download_allowed=False, html5_sources_missing_onl
                 # Given one xblock, only do something with it if it is a video xblock
                 # Since the above query returns ALL xblocks, regardless of whether or not they allow downloads for
                 # videos, we filter again for download_video == False
-                if b[u'block_type'] == u'video' and b[u'fields'][u'download_video'] == video_download_allowed:
-                    html5_sources = b[u'fields'][u'html5_sources']
-                    if html5_sources_missing_only and html5_sources:
-                        # If we only want to know about videos with missing html5 sources, then don't write anything if
-                        # there are html5 sources
-                        pass
+                # if b[u'block_type'] == u'video' and b[u'fields'][u'download_video'] == video_download_allowed:
+                if b[u'block_type'] == u'video':
+                    video_download_flag = get_set_metadata_field(u'download_video', b[u'fields'])
+                    # The download flag is only stored if someone explicitly sets advanced settings on a video.
+                    # When that doesn't happen, it is effectively set to false; just doesn't exist that way (or, at all)
+                    # in mongo.
+                    if video_download_flag == "None":
+                        video_download_effective = False
                     else:
-                        with open(filename_split_mongo, 'a') as output_file:
-                            write_to_file(
-                                output_file=output_file,
-                                    org=(published_course[u'org']).encode("utf-8"),
-                                    course_name=(published_course[u'course']).encode("utf-8"),
-                                    video_id=(b[u'block_id']).encode("utf-8"),
-                                    video_display_name=(b[u'fields'][u'display_name']).encode("utf-8"),
-                                    video_download_allowed=b[u'fields'][u'download_video'],
-                                    html5_sources=html5_sources
-                                )
+                        video_download_effective = video_download_flag
+                    if video_download_effective == video_download_allowed:
+                        html5_sources = get_set_metadata_field(u'html5_sources', b[u'fields'])
+                        if html5_sources_missing_only and html5_sources:
+                            # If we only want to know about videos with missing html5 sources, then don't write anything if
+                            # there are html5 sources
+                            pass
+                        else:
+                            display_name = get_set_metadata_field(u'display_name', b[u'fields'])
+                            with open(filename_split_mongo, 'a') as output_file:
+                                write_to_file(
+                                    output_file=output_file,
+                                        org=(published_course[u'org']).encode("utf-8"),
+                                        course_name=(published_course[u'course']).encode("utf-8"),
+                                        video_id=(b[u'block_id']).encode("utf-8"),
+                                        video_display_name=display_name.encode("utf-8"),
+                                        video_download_allowed=video_download_flag,
+                                        html5_sources=html5_sources
+                                    )
 
 # MAIN
 
