@@ -24,8 +24,8 @@
     <a class="action action-redo" tabindex=1><%- gettext( "Retake Photo" ) %></a>
   </div>
   <div class="control control-do is-hidden" id="webcam_capture_button">
-    <a class="action action-do">
-      <i class="icon fa fa-camera" aria-hidden="true" tabindex=1></i> <span class="sr"><%- gettext( "Take Photo" ) %></span>
+    <a class="action action-do" tabindex=1>
+      <i class="icon fa fa-camera" aria-hidden="true"></i> <span class="sr"><%- gettext( "Take Photo" ) %></span>
     </a>
   </div>
 </div>

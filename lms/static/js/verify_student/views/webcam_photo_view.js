@@ -2,10 +2,10 @@
  * Interface for retrieving webcam photos.
  * Supports HTML5 and Flash.
  */
- var edx = edx || {};
- var key = {
-    enter: 13
- };
+ var edx = edx || {},
+    key = {
+        enter: 13
+    };
 
  (function( $, _, Backbone, gettext ) {
     'use strict';
@@ -247,17 +247,9 @@
             // Install event handlers
             $( "#webcam_reset_button", this.el ).on( 'click', _.bind( this.reset, this ) );
             $( "#webcam_capture_button", this.el ).on( 'click', _.bind( this.capture, this ) );
-            $("#webcam_capture_button").keyup(function(event){
-                if(event.keyCode == key.enter){
-                        $("#webcam_capture_button").click();
-                    }
-                });
 
-            $("#webcam_reset_button").keyup(function(event){
-                if(event.keyCode == key.enter){
-                        $("#webcam_reset_button").click();
-                    }
-                });
+            $( "#webcam_reset_button", this.el ).on( 'keyup', _.bind( this.reset_by_enter, this ) );
+            $( "#webcam_capture_button", this.el ).on( 'keyup', _.bind( this.capture_by_enter, this ) );
 
             // Show the capture button
             $( "#webcam_capture_button", this.el ).removeClass('is-hidden');
@@ -280,6 +272,16 @@
             $( "#webcam_capture_button", this.el ).removeClass('is-hidden');
         },
 
+        capture_by_enter: function(event){
+            if(event.keyCode == key.enter){
+                this.capture();
+            }
+        },
+        reset_by_enter: function(event){
+            if(event.keyCode == key.enter){
+                this.reset();
+            }
+        },
         capture: function() {
             // Take a snapshot of the video
             var success = this.backend.snapshot();
